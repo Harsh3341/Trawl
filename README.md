@@ -1,4 +1,4 @@
-# Insight Pipeline
+# Trawl
 
 A data-ingestion and retrieval platform that crawls developer documentation and
 GitHub release notes, structures and indexes the content, and answers
