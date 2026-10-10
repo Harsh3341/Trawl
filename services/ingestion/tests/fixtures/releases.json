@@ -1,0 +1,6 @@
+[
+  {"html_url": "https://github.com/acme/widget/releases/tag/v2.0.0",
+   "name": "v2.0.0", "tag_name": "v2.0.0", "body": "Added dark mode. Fixed login bug."},
+  {"html_url": "https://github.com/acme/widget/releases/tag/v1.9.0",
+   "name": "", "tag_name": "v1.9.0", "body": "Initial public release."}
+]
