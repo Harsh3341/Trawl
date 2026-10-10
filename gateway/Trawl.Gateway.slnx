@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Trawl.Gateway.Tests/Trawl.Gateway.Tests.csproj" />
+  <Project Path="Trawl.Gateway/Trawl.Gateway.csproj" />
+</Solution>
