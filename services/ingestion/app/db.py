@@ -13,6 +13,15 @@ class StoredChunk:
     embedding: list[float]
 
 
+@dataclass(frozen=True)
+class FetchedDocument:
+    url: str
+    title: str
+    version: str | None
+    content_text: str
+    content_hash: str
+
+
 class Database:
     def __init__(self, conn: psycopg.Connection) -> None:
         self._conn = conn
@@ -73,3 +82,17 @@ class Database:
         with self._conn.cursor() as cur:
             cur.execute("SELECT status FROM documents WHERE id = %s", (document_id,))
             return cur.fetchone()[0]
+
+    def fetch_document(self, document_id: int) -> "FetchedDocument | None":
+        with self._conn.cursor() as cur:
+            cur.execute(
+                "SELECT url, title, version, content_text, content_hash "
+                "FROM documents WHERE id = %s", (document_id,))
+            row = cur.fetchone()
+            if row is None:
+                return None
+            return FetchedDocument(*row)
+
+    def mark_failed(self, document_id: int) -> None:
+        with self._conn.cursor() as cur:
+            cur.execute("UPDATE documents SET status='failed' WHERE id = %s", (document_id,))

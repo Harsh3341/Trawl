@@ -3,12 +3,15 @@ namespace Trawl.Gateway;
 
 public interface ILlmProvider
 {
+    string Name { get; }
     string Complete(string question, IReadOnlyList<RetrievedChunk> contexts);
 }
 
 // Deterministic, offline default: summarizes retrieved context without an API call.
 public class EchoLlmProvider : ILlmProvider
 {
+    public string Name => "echo";
+
     public string Complete(string question, IReadOnlyList<RetrievedChunk> contexts)
     {
         if (contexts.Count == 0)

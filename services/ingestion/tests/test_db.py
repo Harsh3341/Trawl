@@ -19,3 +19,22 @@ def test_replace_chunks_sets_embedded(db):
     assert db.document_status(doc_id) == "embedded"
     db.replace_chunks(doc_id, [StoredChunk(0, "c0", 1, [0.0]*768), StoredChunk(1, "c1", 1, [0.0]*768)])
     assert db.count_chunks(doc_id) == 2                        # replaced, not appended
+
+
+def test_fetch_document_roundtrips_content(db):
+    sid = db.ensure_source("acme/widget", "github_release", "https://github.com/acme/widget")
+    doc_id, _ = db.upsert_document(sid, "https://x/9", "Title 9", "v9", "the body", "h9")
+    doc = db.fetch_document(doc_id)
+    assert doc.url == "https://x/9"
+    assert doc.title == "Title 9"
+    assert doc.version == "v9"
+    assert doc.content_text == "the body"
+    assert doc.content_hash == "h9"
+    assert db.fetch_document(999_999) is None
+
+
+def test_mark_failed_sets_status(db):
+    sid = db.ensure_source("acme/widget", "github_release", "https://github.com/acme/widget")
+    doc_id, _ = db.upsert_document(sid, "https://x/10", "t", "v", "body", "h10")
+    db.mark_failed(doc_id)
+    assert db.document_status(doc_id) == "failed"
