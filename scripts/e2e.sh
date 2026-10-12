@@ -11,6 +11,7 @@ export DATABASE_URL="postgresql://trawl:trawl@localhost:5432/trawl"
 export EMBEDDING_URL="http://localhost:8000"
 export GATEWAY_DB="Host=localhost;Username=trawl;Password=trawl;Database=trawl"
 export JWT_SECRET="dev-only-change-me-00000000000000000000000000000000"
+export KAFKA_BOOTSTRAP_SERVERS="localhost:29092"
 
 EMB_PID=""; GW_PID=""
 cleanup() { [ -n "$EMB_PID" ] && kill "$EMB_PID" 2>/dev/null || true;
@@ -30,8 +31,12 @@ echo "1/4 starting embedding service (hash mode)..."
 EMB_PID=$!
 wait_for "$EMBEDDING_URL/health" "embedding service"
 
-echo "2/4 ingesting $REPO ..."
-( cd services/ingestion && . .venv/bin/activate && python -m app.pipeline "$REPO" )
+echo "2/4 ingesting $REPO via Kafka (crawler -> embed-worker)..."
+docker compose up -d kafka create-topics
+( cd services/ingestion && . .venv/bin/activate \
+    && pip install -q -e '.[kafka]' \
+    && python -m app.crawler "$REPO" \
+    && python -m app.embed_worker --once )
 
 echo "3/4 starting gateway..."
 ( cd gateway && exec dotnet run --project Trawl.Gateway --urls http://localhost:8080 ) &
