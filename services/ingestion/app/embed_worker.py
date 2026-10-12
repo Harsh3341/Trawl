@@ -4,7 +4,7 @@ from dataclasses import dataclass, asdict
 from app.chunker import chunk_text
 from app.db import StoredChunk
 from app.events import (ChunkEmbedded, Consumer, Producer, now_ts,
-                        TOPIC_CHUNK_EMBEDDED)
+                        TOPIC_CHUNK_EMBEDDED, TOPIC_DOCUMENT_INGESTED_DLQ)
 
 
 @dataclass(frozen=True)
@@ -30,10 +30,23 @@ def _embed_document(document_id: int, *, db, embedding, cfg: WorkerConfig) -> in
 def handle(msg, *, db, embedding, producer: Producer,
            cfg: WorkerConfig, sleep=time.sleep) -> None:
     document_id = int(msg.value["documentId"])
-    count = _embed_document(document_id, db=db, embedding=embedding, cfg=cfg)
-    producer.produce(TOPIC_CHUNK_EMBEDDED, key=str(document_id),
-                     value=asdict(ChunkEmbedded(document_id, count, now_ts())))
-    producer.flush()
+    attempt = 0
+    while True:
+        try:
+            count = _embed_document(document_id, db=db, embedding=embedding, cfg=cfg)
+            producer.produce(TOPIC_CHUNK_EMBEDDED, key=str(document_id),
+                             value=asdict(ChunkEmbedded(document_id, count, now_ts())))
+            producer.flush()
+            return
+        except Exception:
+            attempt += 1
+            if attempt >= cfg.max_retries:
+                producer.produce(TOPIC_DOCUMENT_INGESTED_DLQ,
+                                 key=str(document_id), value=msg.value)
+                producer.flush()
+                db.mark_failed(document_id)
+                return
+            sleep(cfg.retry_base_seconds * (2 ** (attempt - 1)))
 
 
 def run_once(consumer: Consumer, *, db, embedding, producer: Producer,
