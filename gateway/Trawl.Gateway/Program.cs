@@ -14,7 +14,12 @@ var dsb = new NpgsqlDataSourceBuilder(dbConn); dsb.UseVector();
 builder.Services.AddSingleton(dsb.Build());
 builder.Services.AddSingleton<IChunkRepository, PgChunkRepository>();
 builder.Services.AddSingleton<ILlmProvider, EchoLlmProvider>();
-builder.Services.AddSingleton<IEventPublisher, NoOpEventPublisher>();
+var kafka = cfg["KAFKA_BOOTSTRAP_SERVERS"];
+if (string.IsNullOrWhiteSpace(kafka))
+    builder.Services.AddSingleton<IEventPublisher, NoOpEventPublisher>();
+else
+    builder.Services.AddSingleton<IEventPublisher>(sp =>
+        new KafkaEventPublisher(kafka, sp.GetRequiredService<ILogger<KafkaEventPublisher>>()));
 builder.Services.AddHttpClient<IEmbeddingClient, HttpEmbeddingClient>(
     c => c.BaseAddress = new Uri(embUrl));
 
