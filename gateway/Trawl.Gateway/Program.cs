@@ -14,6 +14,7 @@ var dsb = new NpgsqlDataSourceBuilder(dbConn); dsb.UseVector();
 builder.Services.AddSingleton(dsb.Build());
 builder.Services.AddSingleton<IChunkRepository, PgChunkRepository>();
 builder.Services.AddSingleton<ILlmProvider, EchoLlmProvider>();
+builder.Services.AddSingleton<IEventPublisher, NoOpEventPublisher>();
 builder.Services.AddHttpClient<IEmbeddingClient, HttpEmbeddingClient>(
     c => c.BaseAddress = new Uri(embUrl));
 

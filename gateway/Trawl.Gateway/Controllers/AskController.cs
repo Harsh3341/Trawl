@@ -11,12 +11,13 @@ public class AskController : ControllerBase
     private readonly IEmbeddingClient _emb;
     private readonly IChunkRepository _repo;
     private readonly ILlmProvider _llm;
+    private readonly IEventPublisher _events;
+    private readonly ILogger<AskController> _log;
 
-    public AskController(IEmbeddingClient emb, IChunkRepository repo, ILlmProvider llm)
+    public AskController(IEmbeddingClient emb, IChunkRepository repo, ILlmProvider llm,
+                         IEventPublisher events, ILogger<AskController> log)
     {
-        _emb = emb;
-        _repo = repo;
-        _llm = llm;
+        _emb = emb; _repo = repo; _llm = llm; _events = events; _log = log;
     }
 
     [HttpPost("/ask")]
@@ -31,6 +32,17 @@ public class AskController : ControllerBase
         var answer = _llm.Complete(req.Question, hits);
         var citations = hits.GroupBy(h => h.DocumentId).Select(g => g.First())
             .Select(h => new Citation(h.DocumentId, h.Url, h.Title, h.Version)).ToList();
+        sw.Stop();
+
+        try
+        {
+            _events.PublishQueryAnswered(new QueryAnsweredEvent(
+                req.Question, k, sw.ElapsedMilliseconds, _llm.Name,
+                hits.Select(h => h.DocumentId).Distinct().ToList(),
+                citations.Count > 0, DateTimeOffset.UtcNow.ToString("O")));
+        }
+        catch (Exception ex) { _log.LogWarning(ex, "query.answered publish failed"); }
+
         return Ok(new AskResponse(answer, citations, sw.ElapsedMilliseconds));
     }
 }
