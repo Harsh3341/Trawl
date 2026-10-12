@@ -53,5 +53,7 @@ def create_topics(topics: list[str], bootstrap: str | None = None,
     admin = AdminClient({"bootstrap.servers": bootstrap_servers(bootstrap)})
     existing = set(admin.list_topics(timeout=10).topics)
     pending = [NewTopic(t, partitions, replication) for t in topics if t not in existing]
+    if not pending:
+        return
     for _, fut in admin.create_topics(pending).items():
         fut.result()
